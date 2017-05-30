@@ -13,17 +13,17 @@ class EventBusPlugin extends HydraPlugin {
     super.setConfig(hydraConfig);
     this.hydraConfig = hydraConfig;
 
-    if (!this.hydraConfig.hydra.serviceName) {
+    if (!this.hydraConfig.serviceName) {
       throw new Error('Config .hydra.serviceName is required to register Event Bus.');
     }
-    if (!this.hydraConfig.hydra.eventBus.serviceName) {
-      throw new Error('Config .hydra.eventBus.serviceName is required to register Event Bus.');
+    if (!this.hydraConfig.plugins || !this.hydraConfig.plugins.eventBus || !this.hydraConfig.plugins.eventBus.serviceName) {
+      throw new Error('Config .hydra.plugins.eventBus.serviceName is required to register Event Bus.');
     }
 
-    let serviceLabel = this.hydraConfig.hydra.serviceLabel;
+    let serviceLabel = this.hydraConfig.serviceLabel;
     if (!serviceLabel) {
 
-      this.hydraConfig.hydra.serviceLabel = 'default';
+      this.hydraConfig.serviceLabel = 'default';
 
       this
         .hydra
@@ -34,6 +34,7 @@ class EventBusPlugin extends HydraPlugin {
       .hydra
       .sendToHealthLog('info', `[${PLUGIN_ID}] Event Bus initialized`);
 
+    this.registry = {};
     this.setupMessageListener();
   }
 
@@ -41,6 +42,25 @@ class EventBusPlugin extends HydraPlugin {
     this
       .hydra
       .sendMessage(this.constructUMFMessage('register', patterns));
+  }
+
+  on(pattern, callback) {
+    this.registerEventBus([pattern]);
+    if (!this.registry[pattern]) {
+      this.registry[pattern] = [];
+    }
+
+    this.registry[pattern].push(callback);
+  }
+
+  off(pattern, callback) {
+    this.unregisterEventBus([pattern]);
+    if (!this.registry[pattern]) {
+      return;
+    }
+
+    const idx = this.registry[pattern].indexOf(callback);
+    this.registry[pattern].splice(idx, 1);
   }
 
   unregisterEventBus(patterns) {
@@ -51,13 +71,12 @@ class EventBusPlugin extends HydraPlugin {
 
   constructUMFMessage(event, patterns) {
     return this.hydra.createUMFMessage({
-      frm: `${this.hydraConfig.hydra.serviceName}:/`,
-      to: `${this.hydraConfig.hydra.eventBus.serviceName}:/`,
+      frm: `${this.hydraConfig.serviceName}:/`,
+      to: `${this.hydraConfig.plugins.eventBus.serviceName}:/`,
       typ: 'event-bus',
       bdy: {
         type: event,
-        serviceName: this.hydraConfig.hydra.serviceName,
-        label: this.hydraConfig.hydra.serviceLabel,
+        serviceTag: `${this.hydraConfig.serviceName}:${this.hydraConfig.serviceLabel}`,
         patterns: patterns
       }
     });
@@ -65,20 +84,32 @@ class EventBusPlugin extends HydraPlugin {
 
   setupMessageListener() {
     this.hydra.on('message', (message) => {
-      if (message.type != 'event-bus') return;
+      if (message.typ != 'event-bus' && message.bdy.type != 'event') return;
 
-      this.hydra.sendToHealthLog('info', `[${PLUGIN_ID}] Event Bus message arrived for pattern: ${message.body.pattern}`);
+      this.hydra.sendToHealthLog('info', `[${PLUGIN_ID}] Event Bus message arrived for pattern: ${message.bdy.eventName}`);
+      const eventName = message.bdy.eventName;
+      const payload   = message.bdy.payload
+
+      const patterns = Object.keys(this.registry);
+
+      for (let pattern of patterns) {
+        if (new RegExp(pattern).test(eventName)) {
+          for (let cb of this.registry[pattern]) {
+            cb(eventName, payload, message);
+          }
+        }
+      }
     });
   }
 
-  emitEvent(pattern, payload) {
+  emit(pattern, payload) {
     const msg = this.hydra.createUMFMessage({
-      frm: `${this.hydraConfig.hydra.serviceName}:/`,
-      to: `${this.hydraConfig.hydra.eventBus.serviceName}:/`,
+      frm: `${this.hydraConfig.serviceName}:/`,
+      to: `${this.hydraConfig.plugins.eventBus.serviceName}:/`,
       typ: 'event-bus',
       bdy: {
         type: 'event',
-        pattern: pattern,
+        eventName: pattern,
         payload: payload
       }
     });
