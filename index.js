@@ -30,6 +30,8 @@ class EventBusPlugin extends HydraPlugin {
         .sendToHealthLog('warning', `[${PLUGIN_ID}] No config .hydra.serviceLabel found use 'default' as label`);
     }
 
+    this.hydra.eventBus = this;
+    
     this
       .hydra
       .sendToHealthLog('info', `[${PLUGIN_ID}] Event Bus initialized`);
