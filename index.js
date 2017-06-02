@@ -2,7 +2,7 @@
 
 const Promise = require('bluebird');
 const HydraPlugin = require('hydra-plugin');
-
+const mm = require('micromatch');
 const PLUGIN_ID = 'event-bus';
 class EventBusPlugin extends HydraPlugin {
   constructor() {
@@ -95,7 +95,7 @@ class EventBusPlugin extends HydraPlugin {
       const patterns = Object.keys(this.registry);
 
       for (let pattern of patterns) {
-        if (new RegExp(pattern).test(eventName)) {
+        if (mm.isMatch(eventName, pattern)) {
           for (let cb of this.registry[pattern]) {
             cb(eventName, payload, message);
           }
