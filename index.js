@@ -1,17 +1,18 @@
 'use strict';
 
 const Promise = require('bluebird');
-const HydraPlugin = require('hydra-plugin');
+const HydraExpressPlugin = require('hydra-express-plugin');
 const mm = require('micromatch');
 const PLUGIN_ID = 'event-bus';
-class EventBusPlugin extends HydraPlugin {
+class EventBusPlugin extends HydraExpressPlugin {
   constructor() {
     super(PLUGIN_ID); // unique identifier for the plugin
   }
 
-  setConfig(hydraConfig) {
-    super.setConfig(hydraConfig);
-    this.hydraConfig = hydraConfig;
+  setConfig(config) {
+    super.setConfig(config);
+    this.config = config;
+    this.hydraConfig = config.hydra;
 
     if (!this.hydraConfig.serviceName) {
       throw new Error('Config .hydra.serviceName is required to register Event Bus.');
@@ -30,8 +31,9 @@ class EventBusPlugin extends HydraPlugin {
         .sendToHealthLog('warning', `[${PLUGIN_ID}] No config .hydra.serviceLabel found use 'default' as label`);
     }
 
-    this.hydra.eventBus = this;
-    
+    !!this.hydra && (this.hydra.eventBus = this);
+    !!this.hydraExpress && (this.hydraExpress.eventBus = this);
+
     this
       .hydra
       .sendToHealthLog('info', `[${PLUGIN_ID}] Event Bus initialized`);
