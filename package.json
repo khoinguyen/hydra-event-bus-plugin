@@ -1,11 +1,12 @@
 {
   "name": "hydra-event-bus-plugin",
-  "version": "1.0.2",
+  "version": "1.1.0",
   "author": "Khoi Nguyen <khoi.nqq@gmail.com>",
   "engines": {
     "node": ">=6.2.1"
   },
   "dependencies": {
+    "hydra-express-plugin": "^0.0.1",
     "hydra-plugin": "0.0.1",
     "micromatch": "^3.0.3"
   },
