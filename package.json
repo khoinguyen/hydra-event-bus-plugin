@@ -1,6 +1,6 @@
 {
   "name": "hydra-event-bus-plugin",
-  "version": "1.2.0",
+  "version": "1.2.1",
   "license": "MIT",
   "author": "Khoi Nguyen <khoi.nqq@gmail.com>",
   "engines": {
